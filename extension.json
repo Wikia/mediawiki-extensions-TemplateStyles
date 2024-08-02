@@ -58,6 +58,9 @@
 		],
 		"CodeEditorGetPageLanguage": [
 			"MediaWiki\\Extension\\TemplateStyles\\Hooks::onCodeEditorGetPageLanguage"
+		],
+		"PageMoveCompleting": [
+			"MediaWiki\\Extension\\TemplateStyles\\Hooks::onPageMoveCompleting"
 		]
 	},
 	"config": {

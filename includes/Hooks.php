@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\TemplateStyles;
  * @license GPL-2.0-or-later
  */
 
+use CommentStoreComment;
 use Config;
 use ContentHandler;
 use ExtensionRegistry;
@@ -15,7 +16,9 @@ use Html;
 use InvalidArgumentException;
 use MapCacheLRU;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Page\ContentModelChangeFactory;
 use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Storage\RevisionSlotsUpdate;
 use Parser;
 use PPFrame;
 use Title;
@@ -247,6 +250,54 @@ class Hooks {
 		}
 		return true;
 	}
+
+    /**
+     * @param $old
+     * @param $new
+     * @param $userIdentity
+     * @param int $pageid
+     * @param int $redirid
+     * @param string $reason
+     * @param $revision
+     * @return true
+     */
+    public static function onPageMoveCompleting($old, $new, $userIdentity, int $pageid, int $redirid, string $reason, $revision) {
+        $config = self::getConfig();
+        if ($revision->getContent( SlotRecord::MAIN )->getModel() === 'sanitized-css' ) {
+            return true;
+        }
+
+        $text = $revision->getContent( SlotRecord::MAIN )->getText();
+        $content = new TemplateStylesContent( $text );
+        $wikiPageFactory  = MediaWikiServices::getInstance()->getWikiPageFactory();
+        $userFactory  = MediaWikiServices::getInstance()->getUserFactory();
+        $namespace = $new->getNamespace();
+        $titleDBKey = $new->getDBkey();
+
+        if ( $namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $titleDBKey->getText(), -4 ) !== '.css' ) {
+            return true;
+        }
+
+        $title = Title::newFromText( $titleDBKey , $config->get( 'TemplateStylesDefaultNamespace' ) );
+        $page = $wikiPageFactory->newFromTitle( $title );
+
+        if ( !$page->exists() ) {
+            return true;
+        }
+
+        $user = $userFactory->newFromId( $userIdentity->getId() );
+        $summary = CommentStoreComment::newUnsavedComment( trim( 'On Page Move Completing Content Model Change' ) );
+
+        $slotsUpdate = new RevisionSlotsUpdate();
+        $slotsUpdate->modifyContent( SlotRecord::MAIN, $content );
+
+        $updater = $page->newPageUpdater( $user, $slotsUpdate );
+        $updater->setContent( SlotRecord::MAIN, $content );
+        $updater->saveRevision( $summary );
+
+        return true;
+    }
+
 
 	/**
 	 * Clear our cache when the parser is reset

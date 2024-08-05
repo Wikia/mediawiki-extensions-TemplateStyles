@@ -276,7 +276,7 @@ class Hooks {
         $userFactory  = MediaWikiServices::getInstance()->getUserFactory();
         $titleDBKey = $new->getDBkey();
 
-        $title = Title::newFromText( $titleDBKey , $config->get( 'TemplateStylesDefaultNamespace' ) );
+        $title = Title::newFromText( $titleDBKey, $config->get( 'TemplateStylesDefaultNamespace' ) );
         $page = $wikiPageFactory->newFromTitle( $title );
 
         if ( !$page->exists() ) {

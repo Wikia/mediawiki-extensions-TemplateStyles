@@ -252,6 +252,7 @@ class Hooks {
 	}
 
     /**
+     *  During the page move process, this updates the content model of the page to sanitize-css
      * @param $old
      * @param $new
      * @param $userIdentity
@@ -263,7 +264,9 @@ class Hooks {
      */
     public static function onPageMoveCompleting($old, $new, $userIdentity, int $pageid, int $redirid, string $reason, $revision) {
         $config = self::getConfig();
-        if ($revision->getContent( SlotRecord::MAIN )->getModel() === 'sanitized-css' ) {
+        $namespace = $new->getNamespace();
+        if ($revision->getContent( SlotRecord::MAIN )->getModel() === 'sanitized-css' ||
+            $namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $new->getText(), -4 ) !== '.css' ) {
             return true;
         }
 
@@ -271,12 +274,7 @@ class Hooks {
         $content = new TemplateStylesContent( $text );
         $wikiPageFactory  = MediaWikiServices::getInstance()->getWikiPageFactory();
         $userFactory  = MediaWikiServices::getInstance()->getUserFactory();
-        $namespace = $new->getNamespace();
         $titleDBKey = $new->getDBkey();
-
-        if ( $namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $new->getText(), -4 ) !== '.css' ) {
-            return true;
-        }
 
         $title = Title::newFromText( $titleDBKey , $config->get( 'TemplateStylesDefaultNamespace' ) );
         $page = $wikiPageFactory->newFromTitle( $title );

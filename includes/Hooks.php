@@ -274,7 +274,7 @@ class Hooks {
         $namespace = $new->getNamespace();
         $titleDBKey = $new->getDBkey();
 
-        if ( $namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $titleDBKey->getText(), -4 ) !== '.css' ) {
+        if ( $namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $new->getText(), -4 ) !== '.css' ) {
             return true;
         }
 

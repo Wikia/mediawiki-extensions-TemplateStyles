@@ -16,7 +16,6 @@ use Html;
 use InvalidArgumentException;
 use MapCacheLRU;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Page\ContentModelChangeFactory;
 use MediaWiki\Revision\SlotRecord;
 use MediaWiki\Storage\RevisionSlotsUpdate;
 use Parser;

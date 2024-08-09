@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\TemplateStyles;
  * @license GPL-2.0-or-later
  */
 
+use CommentStoreComment;
 use Config;
 use ContentHandler;
 use ExtensionRegistry;
@@ -16,6 +17,7 @@ use InvalidArgumentException;
 use MapCacheLRU;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Storage\RevisionSlotsUpdate;
 use Parser;
 use PPFrame;
 use Title;
@@ -247,6 +249,52 @@ class Hooks {
 		}
 		return true;
 	}
+
+    /**
+     *  During the page move process, this updates the content model of the page to sanitize-css
+     * @param $old
+     * @param $new
+     * @param $userIdentity
+     * @param int $pageid
+     * @param int $redirid
+     * @param string $reason
+     * @param $revision
+     * @return true
+     */
+    public static function onPageMoveCompleting($old, $new, $userIdentity, int $pageid, int $redirid, string $reason, $revision) {
+        $config = self::getConfig();
+        $namespace = $new->getNamespace();
+        if ($revision->getContent( SlotRecord::MAIN )->getModel() === 'sanitized-css' ||
+            $namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $new->getText(), -4 ) !== '.css' ) {
+            return true;
+        }
+
+        $text = $revision->getContent( SlotRecord::MAIN )->getText();
+        $content = new TemplateStylesContent( $text );
+        $wikiPageFactory  = MediaWikiServices::getInstance()->getWikiPageFactory();
+        $userFactory  = MediaWikiServices::getInstance()->getUserFactory();
+        $titleDBKey = $new->getDBkey();
+
+        $title = Title::newFromText( $titleDBKey, $config->get( 'TemplateStylesDefaultNamespace' ) );
+        $page = $wikiPageFactory->newFromTitle( $title );
+
+        if ( !$page->exists() ) {
+            return true;
+        }
+
+        $user = $userFactory->newFromId( $userIdentity->getId() );
+        $summary = CommentStoreComment::newUnsavedComment( '' );
+
+        $slotsUpdate = new RevisionSlotsUpdate();
+        $slotsUpdate->modifyContent( SlotRecord::MAIN, $content );
+
+        $updater = $page->newPageUpdater( $user, $slotsUpdate );
+        $updater->setContent( SlotRecord::MAIN, $content );
+        $updater->saveRevision( $summary );
+
+        return true;
+    }
+
 
 	/**
 	 * Clear our cache when the parser is reset

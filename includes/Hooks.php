@@ -9,19 +9,24 @@ namespace MediaWiki\Extension\TemplateStyles;
 
 use InvalidArgumentException;
 use MapCacheLRU;
+use MediaWiki\CommentStore\CommentStoreComment;
 use MediaWiki\Config\Config;
 use MediaWiki\Content\ContentHandler;
 use MediaWiki\Extension\TemplateStyles\Hooks\HookRunner;
 use MediaWiki\Hook\ParserClearStateHook;
 use MediaWiki\Hook\ParserFirstCallInitHook;
 use MediaWiki\Html\Html;
+use MediaWiki\Linker\LinkTarget;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\PPFrame;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Revision\Hook\ContentHandlerDefaultModelForHook;
+use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Storage\RevisionSlotsUpdate;
 use MediaWiki\Title\Title;
+use MediaWiki\User\UserIdentity;
 use Wikimedia\CSS\Grammar\CheckedMatcher;
 use Wikimedia\CSS\Grammar\GrammarMatch;
 use Wikimedia\CSS\Grammar\MatcherFactory;
@@ -238,6 +243,51 @@ class Hooks implements
 			$model = 'sanitized-css';
 			return false;
 		}
+		return true;
+	}
+
+	/**
+	 *  During the page move process, this updates the content model of the page to sanitize-css
+	 */
+	public static function onPageMoveCompleting(
+		LinkTarget $old,
+		LinkTarget $new,
+		UserIdentity $userIdentity,
+		int $pageid,
+		int $redirid,
+		string $reason,
+		RevisionRecord $revision
+	): bool {
+		$config = self::getConfig();
+		$namespace = $new->getNamespace();
+		if ( $revision->getContent( SlotRecord::MAIN )->getModel() === 'sanitized-css' ||
+			$namespace !== $config->get( 'TemplateStylesDefaultNamespace' ) || substr( $new->getText(), -4 ) !== '.css' ) {
+			return true;
+		}
+
+		$text = $revision->getContent( SlotRecord::MAIN )->getText();
+		$content = new TemplateStylesContent( $text );
+		$wikiPageFactory  = MediaWikiServices::getInstance()->getWikiPageFactory();
+		$userFactory  = MediaWikiServices::getInstance()->getUserFactory();
+		$titleDBKey = $new->getDBkey();
+
+		$title = Title::newFromText( $titleDBKey, $config->get( 'TemplateStylesDefaultNamespace' ) );
+		$page = $wikiPageFactory->newFromTitle( $title );
+
+		if ( !$page->exists() ) {
+			return true;
+		}
+
+		$user = $userFactory->newFromId( $userIdentity->getId() );
+		$summary = CommentStoreComment::newUnsavedComment( '' );
+
+		$slotsUpdate = new RevisionSlotsUpdate();
+		$slotsUpdate->modifyContent( SlotRecord::MAIN, $content );
+
+		$updater = $page->newPageUpdater( $user, $slotsUpdate );
+		$updater->setContent( SlotRecord::MAIN, $content );
+		$updater->saveRevision( $summary );
+
 		return true;
 	}
 

@@ -283,7 +283,7 @@ class Hooks {
         }
 
         $user = $userFactory->newFromId( $userIdentity->getId() );
-        $summary = CommentStoreComment::newUnsavedComment( trim( 'On Page Move Completing Content Model Change' ) );
+        $summary = CommentStoreComment::newUnsavedComment( '' );
 
         $slotsUpdate = new RevisionSlotsUpdate();
         $slotsUpdate->modifyContent( SlotRecord::MAIN, $content );

@@ -456,4 +456,21 @@ class Hooks {
 			'</strong>';
 	}
 
+    /**
+     * @param $out
+     * @param $text
+     * @return true
+     */
+    public static function onOutputPageBeforeHTML( &$out, &$text ) {
+        $pattern = '/<style([^>]*)data-mw-deduplicate="(TemplateStyles[^"]*)"([^>]*)>(.*?)<\/style>/is';
+
+        $callback = function ( $matches ) {
+            $styles = str_replace( '&amp;', '&', $matches[4] );
+            return "<style{$matches[1]}data-mw-deduplicate=\"{$matches[2]}\"{$matches[3]}>$styles</style>";
+        };
+
+        $text = preg_replace_callback( $pattern, $callback, $text );
+        return true;
+    }
+
 }

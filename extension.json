@@ -61,6 +61,9 @@
 		],
 		"PageMoveCompleting": [
 			"MediaWiki\\Extension\\TemplateStyles\\Hooks::onPageMoveCompleting"
+		],
+		"OutputPageBeforeHTML": [
+			"MediaWiki\\Extension\\TemplateStyles\\Hooks::onOutputPageBeforeHTML"
 		]
 	},
 	"config": {
